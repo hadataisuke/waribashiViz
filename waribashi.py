@@ -1,5 +1,7 @@
 from graphviz import Digraph
+import sys
 
+sys.setrecursionlimit(18000)
 
 class State:
     def __init__(self, is_first, f, s):
@@ -30,26 +32,40 @@ class State:
         f2 = self.f.copy()
         s2 = self.s.copy()
         if d >= 5:
-            d = 0
+            d = d-5
         if self.is_first:
             s2[si] = d
         else:
             f2[fi] = d
         return State(not self.is_first, f2, s2)
-
-
+    
+    def bunretsu(self,fi,si):
+        f2 = self.f.copy()
+        s2 = self.s.copy()
+        if self.is_first:
+            if self.f[1] == 0 and self.f[0]%2 ==0:
+                d = self.f[0]/2
+                f2 =(d,d)
+            elif self.s[1] == 0 and self.s[0]%2 ==0:
+                d = self.s[0]/2
+                s2 =(d,d)
+        return State(not self.is_first, f2, s2)
+        
 def move(parent, index, is_first, nodes):
     fi, si = index
-    if parent.f[fi] == 0 or parent.s[si] == 0:
+    if si == -1:        
+        child = parent.bunretsu(fi, si)
+    elif parent.f[fi] == 0 or parent.s[si] == 0:
         return
-    child = parent.next_state(fi, si)
+    else:
+        child = parent.next_state(fi, si)
     if parent.has(child):
         return
     s = str(child)
     child = nodes.get(s, child)
     nodes[s] = child
     parent.siblings.append(child)
-    for i in [(0, 0), (0, 1), (1, 0), (1, 1)]:
+    for i in [(0, 0), (0, 1), (1, 0), (1, 1), (-1, -1)]:
         move(child, i, not is_first, nodes)
 
 
@@ -107,5 +123,5 @@ def save(prunning):
         g.render("tree")
 
 
-save(True)
+#save(True)
 save(False)
