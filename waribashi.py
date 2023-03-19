@@ -1,111 +1,111 @@
-from graphviz import Digraph
+import tkinter as tk
+from tkinter import messagebox
 
+class ChopsticksGame(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("割り箸ゲーム")
+        self.geometry("400x200")
 
-class State:
-    def __init__(self, is_first, f, s):
-        self.is_first = is_first
-        self.f = [max(f), min(f)]
-        self.s = [max(s), min(s)]
-        self.siblings = []
-        self.is_drawn = False
+        self.player1_hands = [1, 1]
+        self.player2_hands = [1, 1]
+        self.current_player = 1
 
-    def params(self):
-        return (self.is_first, self.f, self.s)
+        self.init_ui()
 
-    def __eq__(self, other):
-        return self.params() == other.params()
+    def init_ui(self):
+        self.player1_label = tk.Label(self, text="プレイヤー1")
+        self.player1_label.grid(row=0, column=0)
 
-    def __str__(self):
-        s = str(self.f) + "\n" + str(self.s)
-        if self.is_first:
-            return "f\n" + s
+        self.player2_label = tk.Label(self, text="プレイヤー2")
+        self.player2_label.grid(row=0, column=3)
+
+        self.player1_hand1_label = tk.Label(self, text=str(self.player1_hands[0]))
+        self.player1_hand1_label.grid(row=1, column=0)
+
+        self.player1_hand2_label = tk.Label(self, text=str(self.player1_hands[1]))
+        self.player1_hand2_label.grid(row=2, column=0)
+
+        self.player2_hand1_label = tk.Label(self, text=str(self.player2_hands[0]))
+        self.player2_hand1_label.grid(row=1, column=3)
+
+        self.player2_hand2_label = tk.Label(self, text=str(self.player2_hands[1]))
+        self.player2_hand2_label.grid(row=2, column=3)
+
+        self.attack_button = tk.Button(self, text="攻撃", command=self.attack)
+        self.attack_button.grid(row=3, column=0, padx=10)
+
+        self.split_button = tk.Button(self, text="分割", command=self.split)
+        self.split_button.grid(row=3, column=1, padx=10)
+
+    def update_labels(self):
+        self.player1_hand1_label.configure(text=str(self.player1_hands[0]))
+        self.player1_hand2_label.configure(text=str(self.player1_hands[1]))
+        self.player2_hand1_label.configure(text=str(self.player2_hands[0]))
+        self.player2_hand2_label.configure(text=str(self.player2_hands[1]))
+
+    def change_player(self):
+        self.current_player = 3 - self.current_player
+
+    def is_alive(self, hand):
+        return 1 <= hand <= 4
+
+    def attack(self):
+        if self.current_player == 1:
+            attacker_hands = self.player1_hands
+            defender_hands = self.player2_hands
         else:
-            return "s\n" + s
+            attacker_hands = self.player2_hands
+            defender_hands = self.player1_hands
 
-    def has(self, node):
-        return node in self.siblings
+        attack_hand = tk.simpledialog.askinteger("攻撃手", "攻撃する手を選択してください (1 or 2)")
+        if not self.is_alive(attacker_hands[attack_hand - 1]):
+            messagebox.showerror("エラー", "選択された手は生きていません。")
+            return
+        defend_hand = tk.simpledialog.askinteger("防御手", "防御する手を選択してください (1 or 2)")
+        if not self.is_alive(defender_hands[defend_hand - 1]):
+            messagebox.showerror("エラー", "選択された手は生きていません。")
+            return
+        defender_hands[defend_hand - 1] += attacker_hands[attack_hand - 1]
 
-    def next_state(self, fi, si):
-        d = self.f[fi] + self.s[si]
-        f2 = self.f.copy()
-        s2 = self.s.copy()
-        if d >= 5:
-            d = 0
-        if self.is_first:
-            s2[si] = d
+        if defender_hands[defend_hand - 1] >= 5:
+            defender_hands[defend_hand - 1] %= 5
+
+        self.update_labels()
+        self.check_winner()
+        self.change_player()
+
+    def split(self):
+        if self.current_player == 1:
+            player_hands = self.player1_hands
         else:
-            f2[fi] = d
-        return State(not self.is_first, f2, s2)
+            player_hands = self.player2_hands
 
+        if not self.is_alive(player_hands[0]) or not self.is_alive(player_hands[1]):
+            messagebox.showerror("エラー", "両手が生きている場合のみ分割が可能です。")
+            return
 
-def move(parent, index, is_first, nodes):
-    fi, si = index
-    if parent.f[fi] == 0 or parent.s[si] == 0:
-        return
-    child = parent.next_state(fi, si)
-    if parent.has(child):
-        return
-    s = str(child)
-    child = nodes.get(s, child)
-    nodes[s] = child
-    parent.siblings.append(child)
-    for i in [(0, 0), (0, 1), (1, 0), (1, 1)]:
-        move(child, i, not is_first, nodes)
+        new_hand1 = tk.simpledialog.askinteger("新しい手1", "新しい手1の指の本数を入力してください。")
+        new_hand2 = player_hands[0] + player_hands[1] - new_hand1
 
+        if new_hand1 == player_hands[0] or new_hand1 == player_hands[1] or new_hand1 < 0 or new_hand2 < 0:
+            messagebox.showerror("エラー", "不正な指の本数です。")
+            return
 
-def make_tree():
-    nodes = {}
-    root = State(True, [1, 1], [1, 1])
-    nodes[str(root)] = root
-    move(root, (0, 0), True, nodes)
-    return root
+        player_hands[0] = new_hand1
+        player_hands[1] = new_hand2
 
+        self.update_labels()
+        self.change_player()
 
-def make_graph(node, g):
-    if node.is_drawn:
-        return
-    node.is_drawn = True
-    ns = str(node)
-    if max(node.f) == 0:
-        g.node(ns, color="#FF9999", style="filled")
-    elif max(node.s) == 0:
-        g.node(ns, color="#9999FF", style="filled")
-    else:
-        g.node(ns)
-    for n in node.siblings:
-        g.edge(ns, str(n))
-        make_graph(n, g)
+    def check_winner(self):
+        if not self.is_alive(self.player1_hands[0]) and not self.is_alive(self.player1_hands[1]):
+            messagebox.showinfo("勝者", "プレイヤー2が勝ちました！")
+            self.destroy()
+        elif not self.is_alive(self.player2_hands[0]) and not self.is_alive(self.player2_hands[1]):
+            messagebox.showinfo("勝者", "プレイヤー1が勝ちました！")
+            self.destroy()
 
-
-def prune(node):
-    if max(node.s) == 0:
-        return True
-    if node.is_first:
-        for n in node.siblings:
-            if prune(n):
-                return True
-        return False
-    if not node.is_first:
-        sib = node.siblings.copy()
-        for n in sib:
-            if prune(n):
-                node.siblings.remove(n)
-        if len(node.siblings) == 0:
-            return True
-    return False
-
-
-def save(prunning):
-    root = make_tree()
-    g = Digraph(format="png")
-    if prunning:
-        prune(root)
-        make_graph(root, g)
-        g.render("ptree")
-    else:
-        make_graph(root, g)
-        g.render("tree")
-
-
-save(True)
-save(False)
+if __name__ == "__main__":
+    game = ChopsticksGame()
+    game.mainloop()
